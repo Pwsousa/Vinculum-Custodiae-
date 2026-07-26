@@ -1,0 +1,18 @@
+{
+  "name": "@vinculum-custodiae/contratos",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "compilar": "hardhat compile",
+    "testar": "hardhat test",
+    "no": "hardhat node",
+    "implantar:local": "hardhat run scripts/implantar.ts --network localhost",
+    "implantar:sepolia": "hardhat run scripts/implantar.ts --network sepolia"
+  },
+  "devDependencies": {
+    "hardhat": "^2.22.0",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "typescript": "^5.8.3",
+    "ts-node": "^10.9.2"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "vinculum-custodiae",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "contratos",
+    "contratos/pacote-abi",
+    "backend",
+    "frontend",
+    "mocks/sisbemjud",
+    "mocks/policia-civil"
+  ]
+}

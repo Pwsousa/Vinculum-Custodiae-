@@ -1,0 +1,35 @@
+# Node (todo workspace)
+node_modules/
+dist/
+build/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+
+# Hardhat (contratos/)
+contratos/cache/
+contratos/artifacts/
+contratos/typechain-types/
+contratos/coverage/
+contratos/coverage.json
+
+# Vite (frontend/)
+frontend/.vite/
+
+# Mocks (banco local)
+mocks/**/*.sqlite
+mocks/**/*.db
+
+# Infra (Terraform/Ansible/K8s) — etapas futuras
+infra/**/.terraform/
+infra/**/*.tfstate
+infra/**/*.tfstate.backup
+infra/**/*.tfvars
+!infra/**/*.tfvars.example
+infra/**/*.retry
+infra/**/kubeconfig
+infra/**/*.kubeconfig
+infra/**/vault-pass.txt
