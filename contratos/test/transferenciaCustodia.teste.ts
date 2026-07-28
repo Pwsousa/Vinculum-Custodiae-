@@ -45,12 +45,18 @@ describe("TransferenciaCustodia", () => {
       .to.emit(contrato, "TransferenciaIniciada")
       .withArgs(id, origem.address, destino.address, hashLacre);
 
+    // Enquanto nao confirma, custodia permanece com origem (ou vazia se primeira vez)
+    expect(await contrato.custodianteAtual(hashLacre)).to.equal(ethers.ZeroAddress);
+
     await expect(contrato.connect(destino).confirmar(id, ""))
       .to.emit(contrato, "TransferenciaConfirmada")
-      .withArgs(id, false, "");
+      .withArgs(id, false, "")
+      .and.to.emit(contrato, "CustodiaAlterada")
+      .withArgs(hashLacre, destino.address);
 
     const transferencia = await contrato.connect(destino).consultar(id);
     expect(transferencia.estado).to.equal(1n); // Confirmada
+    expect(await contrato.custodianteAtual(hashLacre)).to.equal(destino.address);
   });
 
   it("confirma com ressalva e vira estado ConfirmadaComRessalva (nao excecao)", async () => {
@@ -127,5 +133,25 @@ describe("TransferenciaCustodia", () => {
     await expect(
       contrato.connect(origem).iniciar(destino.address, hashLacre)
     ).to.be.revertedWith("instituicao nao autorizada");
+  });
+
+  it("nao deixa instituicao que nao e custodiante atual iniciar transferencia", async () => {
+    await contrato.connect(origem).iniciar(destino.address, hashLacre);
+    await contrato.connect(destino).confirmar(0n, "");
+
+    await expect(
+      contrato.connect(origem).iniciar(destino.address, hashLacre)
+    ).to.be.revertedWith("nao e custodiante atual");
+  });
+
+  it("registra historico de transferencias por lacre", async () => {
+    await contrato.connect(origem).iniciar(destino.address, hashLacre);
+    await contrato.connect(destino).confirmar(0n, "");
+
+    await contrato.connect(destino).iniciar(origem.address, hashLacre);
+    await contrato.connect(origem).confirmar(1n, "");
+
+    const historico = await contrato.connect(origem).consultarHistorico(hashLacre);
+    expect(historico).to.deep.equal([0n, 1n]);
   });
 });

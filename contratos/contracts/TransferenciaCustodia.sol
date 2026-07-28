@@ -17,6 +17,8 @@ contract TransferenciaCustodia {
     }
 
     mapping(uint256 => Transferencia) public transferencias;
+    mapping(bytes32 => address) public custodianteAtual;
+    mapping(bytes32 => uint256[]) private historicoPorLacre;
     mapping(address => bool) public instituicoesAutorizadas;
     uint256 public proximoId;
     address public owner;
@@ -25,6 +27,7 @@ contract TransferenciaCustodia {
 
     event TransferenciaIniciada(uint256 indexed id, address indexed origem, address indexed destino, bytes32 hashLacre);
     event TransferenciaConfirmada(uint256 indexed id, bool comRessalva, string ressalva);
+    event CustodiaAlterada(bytes32 indexed hashLacre, address indexed novoCustodiante);
     event InstituicaoAutorizada(address indexed instituicao);
     event InstituicaoRevogada(address indexed instituicao);
 
@@ -62,6 +65,8 @@ contract TransferenciaCustodia {
     function iniciar(address destino, bytes32 hashLacre) external apenasAutorizada returns (uint256 id) {
         require(instituicoesAutorizadas[destino], "destino nao autorizado");
         require(destino != msg.sender, "origem nao pode ser destino");
+        address custodiante = custodianteAtual[hashLacre];
+        require(custodiante == address(0) || custodiante == msg.sender, "nao e custodiante atual");
         id = proximoId++;
         transferencias[id] = Transferencia({
             instituicaoOrigem: msg.sender,
@@ -72,6 +77,7 @@ contract TransferenciaCustodia {
             timestampInicio: block.timestamp,
             timestampConfirmacao: 0
         });
+        historicoPorLacre[hashLacre].push(id);
         emit TransferenciaIniciada(id, msg.sender, destino, hashLacre);
     }
 
@@ -88,8 +94,10 @@ contract TransferenciaCustodia {
         t.estado = temRessalva ? Estado.ConfirmadaComRessalva : Estado.Confirmada;
         t.ressalva = ressalva;
         t.timestampConfirmacao = block.timestamp;
+        custodianteAtual[t.hashLacre] = t.instituicaoDestino;
 
         emit TransferenciaConfirmada(id, temRessalva, ressalva);
+        emit CustodiaAlterada(t.hashLacre, t.instituicaoDestino);
     }
 
     /// @notice Lê os dados de uma transferência. Restrito a instituição autorizada.
@@ -97,5 +105,11 @@ contract TransferenciaCustodia {
     /// @return Transferencia Struct completa: origem, destino, lacre, estado, ressalva, timestamps.
     function consultar(uint256 id) external view apenasAutorizada returns (Transferencia memory) {
         return transferencias[id];
+    }
+
+    /// @notice Retorna o histórico de IDs de transferência vinculados a um lacre.
+    /// @param hashLacre Hash do QR do lacre físico.
+    function consultarHistorico(bytes32 hashLacre) external view apenasAutorizada returns (uint256[] memory) {
+        return historicoPorLacre[hashLacre];
     }
 }

@@ -7,7 +7,8 @@
     "testar": "hardhat test",
     "no": "hardhat node",
     "implantar:local": "hardhat run scripts/implantar.ts --network localhost",
-    "implantar:sepolia": "hardhat run scripts/implantar.ts --network sepolia"
+    "implantar:sepolia": "hardhat run scripts/implantar.ts --network sepolia",
+    "demo": "hardhat run scripts/demo.ts"
   },
   "devDependencies": {
     "hardhat": "^2.22.0",
