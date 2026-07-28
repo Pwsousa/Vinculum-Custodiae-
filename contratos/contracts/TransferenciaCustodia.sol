@@ -21,8 +21,12 @@ contract TransferenciaCustodia {
     uint256 public proximoId;
     address public owner;
 
+    error EnderecoInvalido();
+
     event TransferenciaIniciada(uint256 indexed id, address indexed origem, address indexed destino, bytes32 hashLacre);
     event TransferenciaConfirmada(uint256 indexed id, bool comRessalva, string ressalva);
+    event InstituicaoAutorizada(address indexed instituicao);
+    event InstituicaoRevogada(address indexed instituicao);
 
     modifier apenasAutorizada() {
         require(instituicoesAutorizadas[msg.sender], "instituicao nao autorizada");
@@ -38,7 +42,17 @@ contract TransferenciaCustodia {
     /// @param instituicao Endereço da instituição a autorizar.
     function autorizarInstituicao(address instituicao) external {
         require(msg.sender == owner, "apenas owner");
+        if (instituicao == address(0)) revert EnderecoInvalido();
         instituicoesAutorizadas[instituicao] = true;
+        emit InstituicaoAutorizada(instituicao);
+    }
+
+    /// @notice Revoga autorização de uma instituição (ex: chave comprometida).
+    /// @param instituicao Endereço da instituição a revogar.
+    function revogarInstituicao(address instituicao) external {
+        require(msg.sender == owner, "apenas owner");
+        instituicoesAutorizadas[instituicao] = false;
+        emit InstituicaoRevogada(instituicao);
     }
 
     /// @notice Primeira assinatura: origem abre transferência vinculada ao lacre físico (QR).
@@ -47,6 +61,7 @@ contract TransferenciaCustodia {
     /// @return id Identificador da transferência criada.
     function iniciar(address destino, bytes32 hashLacre) external apenasAutorizada returns (uint256 id) {
         require(instituicoesAutorizadas[destino], "destino nao autorizado");
+        require(destino != msg.sender, "origem nao pode ser destino");
         id = proximoId++;
         transferencias[id] = Transferencia({
             instituicaoOrigem: msg.sender,

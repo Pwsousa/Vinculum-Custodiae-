@@ -31,6 +31,12 @@ describe("TransferenciaCustodia", () => {
     ).to.be.revertedWith("destino nao autorizado");
   });
 
+  it("nao deixa origem iniciar transferencia pra si mesma", async () => {
+    await expect(
+      contrato.connect(origem).iniciar(origem.address, hashLacre)
+    ).to.be.revertedWith("origem nao pode ser destino");
+  });
+
   it("inicia e confirma transferencia sem ressalva", async () => {
     const tx = await contrato.connect(origem).iniciar(destino.address, hashLacre);
     const id = 0n;
@@ -101,5 +107,25 @@ describe("TransferenciaCustodia", () => {
     await expect(
       contrato.connect(terceiro).autorizarInstituicao(terceiro.address)
     ).to.be.revertedWith("apenas owner");
+  });
+
+  it("nao deixa autorizar endereco zero", async () => {
+    await expect(
+      contrato.autorizarInstituicao(ethers.ZeroAddress)
+    ).to.be.revertedWithCustomError(contrato, "EnderecoInvalido");
+  });
+
+  it("apenas owner revoga instituicao", async () => {
+    await expect(
+      contrato.connect(terceiro).revogarInstituicao(origem.address)
+    ).to.be.revertedWith("apenas owner");
+  });
+
+  it("revoga instituicao e bloqueia acao subsequente", async () => {
+    await contrato.revogarInstituicao(origem.address);
+
+    await expect(
+      contrato.connect(origem).iniciar(destino.address, hashLacre)
+    ).to.be.revertedWith("instituicao nao autorizada");
   });
 });
