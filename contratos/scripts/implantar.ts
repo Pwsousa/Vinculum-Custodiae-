@@ -3,12 +3,18 @@ import * as fs from "fs";
 import * as path from "path";
 
 async function main() {
+  const [deployer] = await ethers.getSigners();
+  // Em produção, OWNER_ADDRESS deve ser uma carteira multisig (ex: Gnosis Safe) já implantada.
+  // Sem a env var, o owner inicial é o próprio deployer (conveniente em localhost/dev).
+  const enderecoOwner = process.env.OWNER_ADDRESS || deployer.address;
+
   const Fabrica = await ethers.getContractFactory("TransferenciaCustodia");
-  const contrato = await Fabrica.deploy();
+  const contrato = await Fabrica.deploy(enderecoOwner);
   await contrato.waitForDeployment();
 
   const endereco = await contrato.getAddress();
   console.log(`TransferenciaCustodia implantado em ${network.name}: ${endereco}`);
+  console.log(`Owner inicial: ${enderecoOwner}`);
 
   const pastaAbi = path.join(__dirname, "..", "pacote-abi");
   const caminhoEnderecos = path.join(pastaAbi, "enderecos.json");
