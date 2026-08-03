@@ -18,6 +18,7 @@ contratos/coverage.json
 
 # Vite (frontend/)
 frontend/.vite/
+*.tsbuildinfo
 
 # Mocks (banco local)
 mocks/**/*.sqlite
