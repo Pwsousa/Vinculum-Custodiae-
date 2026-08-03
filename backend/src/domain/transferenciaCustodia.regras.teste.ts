@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   avaliarConfirmacao,
   calcularHashLacre,
+  calcularItemId,
   Estado,
+  ordenarAssinaturas,
   podeIniciar,
+  thresholdAtingido,
 } from "./transferenciaCustodia.regras";
 
 describe("calcularHashLacre", () => {
@@ -13,6 +16,20 @@ describe("calcularHashLacre", () => {
 
   it("numeros de lacre diferentes geram hashes diferentes", () => {
     expect(calcularHashLacre("LJ-9987")).not.toBe(calcularHashLacre("LJ-9988"));
+  });
+});
+
+describe("calcularItemId", () => {
+  it("e deterministico: mesmo identificador interno gera mesmo hash", () => {
+    expect(calcularItemId("policia-civil:bo-2024-000042")).toBe(
+      calcularItemId("policia-civil:bo-2024-000042"),
+    );
+  });
+
+  it("identificadores diferentes geram hashes diferentes", () => {
+    expect(calcularItemId("policia-civil:bo-2024-000042")).not.toBe(
+      calcularItemId("policia-civil:bo-2024-000043"),
+    );
   });
 });
 
@@ -33,18 +50,32 @@ describe("avaliarConfirmacao", () => {
 });
 
 describe("podeIniciar", () => {
-  const enderecoOrigem = "0x5f0ad5D7c0F067F52651ec16fcE0155bB18C392e";
-  const enderecoDestino = "0xeF214191130A7E8a5497fdde53d158D5BbAF1A4f";
-
-  it("permite quando origem e destino sao diferentes", () => {
-    expect(podeIniciar(enderecoOrigem, enderecoDestino)).toBe(true);
+  it("permite quando origem e destino sao instituicoes diferentes", () => {
+    expect(podeIniciar(1n, 2n)).toBe(true);
   });
 
-  it("bloqueia quando origem e destino sao o mesmo endereco", () => {
-    expect(podeIniciar(enderecoOrigem, enderecoOrigem)).toBe(false);
+  it("bloqueia quando origem e destino sao a mesma instituicao", () => {
+    expect(podeIniciar(1n, 1n)).toBe(false);
   });
+});
 
-  it("bloqueia mesmo endereco com caixa diferente (case-insensitive)", () => {
-    expect(podeIniciar(enderecoOrigem, enderecoOrigem.toLowerCase())).toBe(false);
+describe("ordenarAssinaturas", () => {
+  it("ordena por endereco crescente independente da ordem de entrada", () => {
+    const resultado = ordenarAssinaturas([
+      { endereco: "0xeF214191130A7E8a5497fdde53d158D5BbAF1A4f", assinatura: "sig-b" },
+      { endereco: "0x5f0ad5D7c0F067F52651ec16fcE0155bB18C392e", assinatura: "sig-a" },
+    ]);
+    expect(resultado).toEqual(["sig-a", "sig-b"]);
+  });
+});
+
+describe("thresholdAtingido", () => {
+  it("conta enderecos unicos, ignorando caixa", () => {
+    const coletadas = [
+      { endereco: "0xAAAA000000000000000000000000000000000a", assinatura: "s1" },
+      { endereco: "0xaaaa000000000000000000000000000000000a", assinatura: "s1-repetida" },
+    ];
+    expect(thresholdAtingido(coletadas, 2)).toBe(false);
+    expect(thresholdAtingido(coletadas, 1)).toBe(true);
   });
 });

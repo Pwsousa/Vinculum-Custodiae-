@@ -3,16 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "iniciar": "tsx src/index.ts",
     "testar": "vitest run",
     "compilar": "tsc --noEmit"
   },
   "dependencies": {
+    "@fastify/cors": "^10.1.0",
     "@vinculum-custodiae/abi": "*",
-    "ethers": "^6.13.0"
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.0",
+    "fastify": "^5.0.0"
   },
   "devDependencies": {
-    "typescript": "^5.8.3",
     "@types/node": "^20.14.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.3",
     "vitest": "^4.1.10"
   }
 }
