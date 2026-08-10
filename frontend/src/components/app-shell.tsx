@@ -8,6 +8,8 @@ const NAV = [
   { to: "/painel", label: "Painel" },
   { to: "/bens/novo", label: "Registrar bem" },
   { to: "/transferencias/nova", label: "Nova transferência" },
+  { to: "/reconciliacao", label: "Reconciliação" },
+  { to: "/demo/declinio-federal", label: "Demo federal" },
 ] as const;
 
 function truncarEndereco(endereco: string): string {
@@ -29,11 +31,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-5 py-3">
           <Link to="/painel" className="flex items-center gap-2.5">
             <span className="flex h-7 w-7 items-center justify-center rounded-sm border border-primary-foreground/40 text-[11px] font-semibold">
-              CI
+              VC
             </span>
-            <span className="text-sm font-semibold tracking-tight">
-              Cadeia de Custódia Interinstitucional
-            </span>
+            <span className="text-sm font-semibold tracking-tight">Vinculum Custodiae</span>
           </Link>
           <nav className="flex flex-1 flex-wrap items-center gap-1">
             {NAV.map((item) => (

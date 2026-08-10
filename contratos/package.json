@@ -8,7 +8,8 @@
     "no": "hardhat node",
     "implantar:local": "hardhat run scripts/implantar.ts --network localhost",
     "implantar:sepolia": "hardhat run scripts/implantar.ts --network sepolia",
-    "demo": "hardhat run scripts/demo.ts"
+    "demo": "hardhat run scripts/demo.ts",
+    "demo:federal": "hardhat run scripts/demo-declinio-federal.ts"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",

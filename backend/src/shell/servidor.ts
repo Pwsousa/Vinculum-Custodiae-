@@ -12,6 +12,8 @@ import {
   valorIniciarTransferencia,
   valorRecusarTransferencia,
 } from "../domain/eip712CustodiaTransferencia";
+import { TIPOS_RESSALVA } from "../domain/ressalva";
+import { listarVisoesInstitucionais, reconciliarPorItemId } from "./reconciliacao.servico";
 
 type AssinaturaRecebida = { endereco: string; assinatura: string };
 
@@ -158,6 +160,25 @@ export async function criarServidor() {
       id: BigInt(id),
       motivo: corpo.motivo,
       assinaturasColetadas: corpo.assinaturas,
+    });
+  });
+
+  // ---------- Reconciliação entre mocks institucionais (esquemas heterogêneos) ----------
+
+  app.get("/ressalvas/tipos", async () => ({ tipos: TIPOS_RESSALVA }));
+
+  app.get("/reconciliacao/sistemas", async () =>
+    listarVisoesInstitucionais({
+      urlSisbemjud: configuracao.urlSisbemjud,
+      urlPoliciaCivil: configuracao.urlPoliciaCivil,
+    }),
+  );
+
+  app.get("/reconciliacao/item/:itemId", async (req) => {
+    const { itemId } = req.params as { itemId: string };
+    return reconciliarPorItemId(itemId, {
+      urlSisbemjud: configuracao.urlSisbemjud,
+      urlPoliciaCivil: configuracao.urlPoliciaCivil,
     });
   });
 

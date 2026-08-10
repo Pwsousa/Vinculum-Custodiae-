@@ -79,9 +79,14 @@ export function Painel() {
             {dados ? dados.sigla : "Ver painel da instituição"}
           </h1>
         </div>
-        <Button asChild size="sm">
-          <Link to="/transferencias/nova">Nova transferência</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild size="sm" variant="outline">
+            <Link to="/reconciliacao">Reconciliação</Link>
+          </Button>
+          <Button asChild size="sm">
+            <Link to="/transferencias/nova">Nova transferência</Link>
+          </Button>
+        </div>
       </div>
 
       <section className="mb-8 rounded-md border border-border bg-card p-5">

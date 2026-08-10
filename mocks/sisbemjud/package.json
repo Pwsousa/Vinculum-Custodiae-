@@ -1,0 +1,18 @@
+{
+  "name": "@vinculum-custodiae/mock-sisbemjud",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "iniciar": "tsx src/servidor.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.1.0",
+    "fastify": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.3"
+  }
+}

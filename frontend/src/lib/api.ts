@@ -115,3 +115,39 @@ export function relayRecusar(id: string, motivo: string, assinaturas: Assinatura
     body: JSON.stringify({ motivo, assinaturas }),
   });
 }
+
+export type TipoRessalvaApi = { valor: string; rotulo: string };
+
+export type ResultadoReconciliacaoApi = {
+  chave: string;
+  brutos: {
+    sisbemjud: Record<string, unknown> | null;
+    policiaCivil: Record<string, unknown> | null;
+  };
+  canonicos: {
+    sisbemjud: Record<string, unknown> | null;
+    policiaCivil: Record<string, unknown> | null;
+  };
+  convergencias: string[];
+  divergencias: string[];
+  observacao: string;
+};
+
+export function listarTiposRessalva() {
+  return requisitar<{ tipos: TipoRessalvaApi[] }>("/ressalvas/tipos");
+}
+
+export function listarSistemasInstitucionais() {
+  return requisitar<{
+    sisbemjud: { sistema: string; esquema: string; bens: Record<string, unknown>[] };
+    policiaCivil: {
+      sistema: string;
+      esquema: string;
+      apreensoes: Record<string, unknown>[];
+    };
+  }>("/reconciliacao/sistemas");
+}
+
+export function reconciliarItem(itemId: string) {
+  return requisitar<ResultadoReconciliacaoApi>(`/reconciliacao/item/${encodeURIComponent(itemId)}`);
+}

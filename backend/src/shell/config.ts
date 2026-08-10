@@ -7,4 +7,6 @@ export const configuracao = {
   chavePrivadaRelayer: process.env.PRIVATE_KEY_RELAYER || "",
   rede: process.env.REDE || "localhost",
   porta: Number(process.env.PORTA) || 3333,
+  urlSisbemjud: process.env.URL_SISBEMJUD || "http://127.0.0.1:4001",
+  urlPoliciaCivil: process.env.URL_POLICIA_CIVIL || "http://127.0.0.1:4002",
 };
