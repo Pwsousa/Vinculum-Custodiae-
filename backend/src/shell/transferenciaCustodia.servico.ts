@@ -1,7 +1,8 @@
-import type { Contract } from "ethers";
+import type { Contract, EventLog } from "ethers";
 import { ordenarAssinaturas, type AssinaturaColetada } from "../domain/transferenciaCustodia.regras";
 
 export type TransferenciaConsultada = {
+  id: string;
   itemId: string;
   institutionOrigemId: bigint;
   institutionDestinoId: bigint;
@@ -13,7 +14,24 @@ export type TransferenciaConsultada = {
 };
 
 export function criarServicoTransferenciaCustodia(contrato: Contract) {
+  async function consultarTransferencia(id: bigint): Promise<TransferenciaConsultada> {
+    const t = await contrato.consultar(id);
+    return {
+      id: id.toString(),
+      itemId: t.itemId as string,
+      institutionOrigemId: t.institutionOrigemId as bigint,
+      institutionDestinoId: t.institutionDestinoId as bigint,
+      hashLacre: t.hashLacre as string,
+      estado: Number(t.estado),
+      ressalva: t.ressalva as string,
+      timestampInicio: Number(t.timestampInicio),
+      timestampConfirmacao: Number(t.timestampConfirmacao),
+    };
+  }
+
   return {
+    consultarTransferencia,
+
     async obterNonceInstituicao(institutionId: bigint): Promise<bigint> {
       return contrato.nonces(institutionId);
     },
@@ -31,22 +49,43 @@ export function criarServicoTransferenciaCustodia(contrato: Contract) {
       return contrato.custodianteInstituicaoAtual(itemId);
     },
 
-    async consultarTransferencia(id: bigint): Promise<TransferenciaConsultada> {
-      const t = await contrato.consultar(id);
-      return {
-        itemId: t.itemId as string,
-        institutionOrigemId: t.institutionOrigemId as bigint,
-        institutionDestinoId: t.institutionDestinoId as bigint,
-        hashLacre: t.hashLacre as string,
-        estado: Number(t.estado),
-        ressalva: t.ressalva as string,
-        timestampInicio: Number(t.timestampInicio),
-        timestampConfirmacao: Number(t.timestampConfirmacao),
-      };
-    },
-
     async consultarHistoricoItem(itemId: string): Promise<bigint[]> {
       return contrato.consultarHistoricoItem(itemId);
+    },
+
+    /**
+     * O contrato não guarda "lista de itens da instituição X" — só custodianteInstituicaoAtual
+     * por item. Reconstrói via eventos (ItemRegistrado e CustodiaAlterada, ambos indexados por
+     * institutionId) pra achar candidatos, depois confirma qual deles ainda está com X agora.
+     */
+    async listarItensDaInstituicao(institutionId: bigint): Promise<string[]> {
+      const [registrados, custodiaAlterada] = await Promise.all([
+        contrato.queryFilter(contrato.filters.ItemRegistrado(null, institutionId)),
+        contrato.queryFilter(contrato.filters.CustodiaAlterada(null, institutionId)),
+      ]);
+      const candidatos = new Set<string>();
+      for (const evento of [...registrados, ...custodiaAlterada]) {
+        candidatos.add((evento as EventLog).args.itemId as string);
+      }
+      const atuais: string[] = [];
+      for (const itemId of candidatos) {
+        const custodianteAtual = await contrato.custodianteInstituicaoAtual(itemId);
+        if (custodianteAtual === institutionId) atuais.push(itemId);
+      }
+      return atuais;
+    },
+
+    /**
+     * institutionOrigemId/institutionDestinoId não são indexados no evento TransferenciaIniciada,
+     * então busca todos os eventos e filtra em memória — aceitável na escala de uma PoC.
+     */
+    async listarTransferenciasDaInstituicao(institutionId: bigint): Promise<TransferenciaConsultada[]> {
+      const eventos = await contrato.queryFilter(contrato.filters.TransferenciaIniciada());
+      const idsRelevantes = eventos
+        .map((evento) => (evento as EventLog).args)
+        .filter((args) => args.institutionOrigemId === institutionId || args.institutionDestinoId === institutionId)
+        .map((args) => args.id as bigint);
+      return Promise.all(idsRelevantes.map((id) => consultarTransferencia(id)));
     },
 
     async iniciarTransferencia(dados: {

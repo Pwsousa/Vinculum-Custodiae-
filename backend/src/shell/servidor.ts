@@ -59,6 +59,18 @@ export async function criarServidor() {
     return { nonce: nonce.toString() };
   });
 
+  app.get("/instituicoes/:id/itens", async (req) => {
+    const { id } = req.params as { id: string };
+    const itens = await servico.listarItensDaInstituicao(BigInt(id));
+    return { itens };
+  });
+
+  app.get("/instituicoes/:id/transferencias", async (req) => {
+    const { id } = req.params as { id: string };
+    const transferencias = await servico.listarTransferenciasDaInstituicao(BigInt(id));
+    return { transferencias: transferencias.map(serializarTransferencia) };
+  });
+
   // ---------- Preparo de assinatura (o front assina isto com a wallet da instituição) ----------
 
   app.get("/transferencias/preparar-iniciar", async (req) => {
@@ -154,6 +166,7 @@ export async function criarServidor() {
 
 function serializarTransferencia(t: TransferenciaConsultada): Record<string, unknown> {
   return {
+    id: t.id,
     itemId: t.itemId,
     institutionOrigemId: t.institutionOrigemId.toString(),
     institutionDestinoId: t.institutionDestinoId.toString(),

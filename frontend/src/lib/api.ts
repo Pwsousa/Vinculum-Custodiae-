@@ -15,6 +15,7 @@ async function requisitar<T>(caminho: string, init?: RequestInit): Promise<T> {
 }
 
 export type TransferenciaApi = {
+  id: string;
   itemId: string;
   institutionOrigemId: string;
   institutionDestinoId: string;
@@ -64,6 +65,14 @@ export function consultarCustodiante(itemId: string) {
 
 export function consultarInstituicao(id: string) {
   return requisitar<{ sigla: string; threshold: number; ativa: boolean }>(`/instituicoes/${id}`);
+}
+
+export function consultarItensDaInstituicao(id: string) {
+  return requisitar<{ itens: string[] }>(`/instituicoes/${id}/itens`);
+}
+
+export function consultarTransferenciasDaInstituicao(id: string) {
+  return requisitar<{ transferencias: TransferenciaApi[] }>(`/instituicoes/${id}/transferencias`);
 }
 
 export function prepararIniciar(dados: { itemId: string; institutionDestinoId: string; hashLacre: string }) {
