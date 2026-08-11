@@ -1,5 +1,5 @@
 import { BrowserProvider, type Eip1193Provider, type JsonRpcSigner } from "ethers";
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 declare global {
   interface Window {
@@ -22,6 +22,20 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [endereco, setEndereco] = useState<string | null>(null);
   const [conectando, setConectando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!window.ethereum || !("on" in window.ethereum)) return;
+    const eth = window.ethereum as Eip1193Provider & {
+      on?: (event: string, handler: (...args: unknown[]) => void) => void;
+      removeListener?: (event: string, handler: (...args: unknown[]) => void) => void;
+    };
+    const onAccounts = (accounts: unknown) => {
+      const lista = Array.isArray(accounts) ? (accounts as string[]) : [];
+      setEndereco(lista[0] ?? null);
+    };
+    eth.on?.("accountsChanged", onAccounts);
+    return () => eth.removeListener?.("accountsChanged", onAccounts);
+  }, []);
 
   const conectar = useCallback(async () => {
     if (!window.ethereum) {

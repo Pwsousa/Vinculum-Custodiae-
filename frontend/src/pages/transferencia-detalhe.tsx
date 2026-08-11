@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 const ESTADO_NOME = ["Iniciada", "Confirmada", "ConfirmadaComRessalva", "Recusada"] as const;
 
@@ -50,6 +51,7 @@ export function TransferenciaDetalhe() {
   const [acao, setAcao] = useState<"confirmar" | "recusar" | null>(null);
   const [erroAcao, setErroAcao] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [txHashConfirmacao, setTxHashConfirmacao] = useState("");
 
   const ressalva = useMemo(
     () => montarRessalva(tipoRessalva, detalheRessalva),
@@ -87,7 +89,10 @@ export function TransferenciaDetalhe() {
       const dadosParaAssinar = await prepararConfirmar(id, ressalva);
       const signer = await obterSigner();
       const assinatura = await assinarComWallet(signer, dadosParaAssinar);
-      await relayConfirmar(id, ressalva, [{ endereco: await signer.getAddress(), assinatura }]);
+      const resultado = await relayConfirmar(id, ressalva, [
+        { endereco: await signer.getAddress(), assinatura },
+      ]);
+      setTxHashConfirmacao(resultado.txHash);
       setTransferencia(await consultarTransferencia(id));
       setAcao(null);
     } catch (e) {
@@ -136,6 +141,8 @@ export function TransferenciaDetalhe() {
   const origem = siglas[transferencia.institutionOrigemId] ?? `Instituição ${transferencia.institutionOrigemId}`;
   const destino =
     siglas[transferencia.institutionDestinoId] ?? `Instituição ${transferencia.institutionDestinoId}`;
+  const confirmada = estadoNome === "Confirmada" || estadoNome === "ConfirmadaComRessalva";
+  const recusada = estadoNome === "Recusada";
 
   return (
     <AppShell>
@@ -148,6 +155,94 @@ export function TransferenciaDetalhe() {
         </div>
         <StatusBadge status={estadoNome} />
       </div>
+
+      {confirmada ? (
+        <section className="mb-6 overflow-hidden rounded-md border border-success/35 bg-success/10">
+          <div className="border-b border-success/25 px-5 py-3">
+            <p className="rule-label text-success">Dupla assinatura concluída</p>
+            <p className="mt-1 text-sm font-medium">
+              A custódia do item mudou de {origem} para {destino}.
+            </p>
+            {txHashConfirmacao ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Tx da 2ª assinatura: <Hash value={txHashConfirmacao} chars={12} />
+              </p>
+            ) : null}
+          </div>
+          <div className="grid gap-0 md:grid-cols-[1fr_auto_1fr]">
+            <CustodiaCard
+              titulo="Custódia anterior"
+              papel="Remetente · 1ª assinatura"
+              sigla={origem}
+              institutionId={transferencia.institutionOrigemId}
+              itemId={transferencia.itemId}
+              quando={formatDate(transferencia.timestampInicio)}
+              tom="muted"
+            />
+            <div className="flex items-center justify-center border-y border-success/20 px-3 py-4 md:border-x md:border-y-0">
+              <span className="text-lg font-semibold text-success" aria-hidden>
+                →
+              </span>
+            </div>
+            <CustodiaCard
+              titulo="Custódia atual"
+              papel="Destinatário · 2ª assinatura"
+              sigla={destino}
+              institutionId={transferencia.institutionDestinoId}
+              itemId={transferencia.itemId}
+              quando={formatDate(transferencia.timestampConfirmacao)}
+              tom="success"
+            />
+          </div>
+          <div className="border-t border-success/25 px-5 py-3 text-xs text-muted-foreground">
+            O <span className="font-medium text-foreground">itemId</span> (hash do bem) permanece o
+            mesmo; o que muda é a instituição custodiante após a contra-assinatura.{" "}
+            <Link to={`/bens/${transferencia.itemId}`} className="text-primary hover:underline">
+              Ver cadeia completa
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
+      {estadoNome === "Iniciada" ? (
+        <section className="mb-6 rounded-md border border-warning/40 bg-warning/10 px-5 py-4">
+          <p className="text-sm font-medium">Custódia ainda com {origem}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            A 1ª assinatura iniciou a remessa. Só na 2ª assinatura de {destino} a custódia muda.
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <CustodiaCard
+              titulo="Custódia atual (ainda)"
+              papel="Aguardando contra-assinatura"
+              sigla={origem}
+              institutionId={transferencia.institutionOrigemId}
+              itemId={transferencia.itemId}
+              quando={formatDate(transferencia.timestampInicio)}
+              tom="warning"
+              compacto
+            />
+            <CustodiaCard
+              titulo="Custódia prevista"
+              papel="Após confirmação do destino"
+              sigla={destino}
+              institutionId={transferencia.institutionDestinoId}
+              itemId={transferencia.itemId}
+              quando="Pendente"
+              tom="muted"
+              compacto
+            />
+          </div>
+        </section>
+      ) : null}
+
+      {recusada ? (
+        <section className="mb-6 rounded-md border border-border bg-muted/40 px-5 py-4">
+          <p className="text-sm font-medium">Recebimento recusado — custódia permanece em {origem}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Não houve mudança de custodiante. O lacre desta tentativa não pode ser reutilizado.
+          </p>
+        </section>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div className="space-y-6">
@@ -166,6 +261,18 @@ export function TransferenciaDetalhe() {
                 <dt className="rule-label">Lacre físico (hash)</dt>
                 <dd className="mt-0.5">
                   <Hash value={transferencia.hashLacre} />
+                </dd>
+              </div>
+              <div>
+                <dt className="rule-label">Instituição origem (ID)</dt>
+                <dd className="mt-0.5">
+                  {origem} · <span className="hash">#{transferencia.institutionOrigemId}</span>
+                </dd>
+              </div>
+              <div>
+                <dt className="rule-label">Instituição destino (ID)</dt>
+                <dd className="mt-0.5">
+                  {destino} · <span className="hash">#{transferencia.institutionDestinoId}</span>
                 </dd>
               </div>
               <div>
@@ -303,5 +410,58 @@ export function TransferenciaDetalhe() {
         </aside>
       </div>
     </AppShell>
+  );
+}
+
+function CustodiaCard({
+  titulo,
+  papel,
+  sigla,
+  institutionId,
+  itemId,
+  quando,
+  tom,
+  compacto,
+}: {
+  titulo: string;
+  papel: string;
+  sigla: string;
+  institutionId: string;
+  itemId: string;
+  quando: string;
+  tom: "success" | "warning" | "muted";
+  compacto?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "px-5 py-4",
+        tom === "success" && "bg-success/10",
+        tom === "warning" && "rounded-sm border border-warning/30 bg-warning/5",
+        tom === "muted" && (compacto ? "rounded-sm border border-border bg-card" : "bg-muted/30"),
+      )}
+    >
+      <p className="rule-label">{titulo}</p>
+      <p className={cn("mt-1 font-semibold tracking-tight", compacto ? "text-base" : "text-lg")}>
+        {sigla}
+      </p>
+      <p className="mt-0.5 text-xs text-muted-foreground">{papel}</p>
+      <dl className="mt-3 space-y-1.5 text-xs">
+        <div>
+          <dt className="text-muted-foreground">ID da instituição</dt>
+          <dd className="hash mt-0.5">#{institutionId}</dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">Hash do item (inalterado)</dt>
+          <dd className="mt-0.5">
+            <Hash value={itemId} chars={compacto ? 8 : 12} />
+          </dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">Quando</dt>
+          <dd className="mt-0.5">{quando}</dd>
+        </div>
+      </dl>
+    </div>
   );
 }

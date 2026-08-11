@@ -13,9 +13,52 @@ export type TransferenciaConsultada = {
   timestampConfirmacao: number;
 };
 
+/**
+ * consultar / consultarHistoricoItem exigem acesso de leitura on-chain.
+ * O relayer (owner) nem sempre é signatário — em contratos antigos só signatários leem.
+ * Tentamos como relayer; se falhar, repetimos eth_call via provider com `from` de um signatário.
+ */
 export function criarServicoTransferenciaCustodia(contrato: Contract) {
+  let leitorCache: string | null = null;
+
+  /** Contrato só com provider — permite eth_call com `from` de um signatário (Wallet rejeita). */
+  function contratoSomenteLeitura(): Contract {
+    const provedor = contrato.runner && "provider" in contrato.runner ? contrato.runner.provider : null;
+    if (!provedor) throw new Error("Provedor RPC indisponivel para consulta restrita");
+    return contrato.connect(provedor);
+  }
+
+  async function descobrirSignatarioLeitor(): Promise<string> {
+    if (leitorCache) return leitorCache;
+    const eventos = await contrato.queryFilter(contrato.filters.SignatarioAdicionado());
+    if (eventos.length === 0) {
+      throw new Error(
+        "sem acesso de leitura: nenhum signatario cadastrado — autorize uma conta em /admin/instituicoes",
+      );
+    }
+    leitorCache = (eventos[0] as EventLog).args.signatario as string;
+    return leitorCache;
+  }
+
+  async function lerRestrito<T>(
+    comoRelayer: () => Promise<T>,
+    comoSignatario: (leitura: Contract, from: string) => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await comoRelayer();
+    } catch (erro) {
+      const msg = erro instanceof Error ? erro.message : String(erro);
+      if (!msg.includes("sem acesso de leitura")) throw erro;
+      const from = await descobrirSignatarioLeitor();
+      return await comoSignatario(contratoSomenteLeitura(), from);
+    }
+  }
+
   async function consultarTransferencia(id: bigint): Promise<TransferenciaConsultada> {
-    const t = await contrato.consultar(id);
+    const t = await lerRestrito(
+      () => contrato.consultar(id),
+      (leitura, from) => leitura.consultar.staticCall(id, { from }),
+    );
     return {
       id: id.toString(),
       itemId: t.itemId as string,
@@ -50,7 +93,10 @@ export function criarServicoTransferenciaCustodia(contrato: Contract) {
     },
 
     async consultarHistoricoItem(itemId: string): Promise<bigint[]> {
-      return contrato.consultarHistoricoItem(itemId);
+      return lerRestrito(
+        () => contrato.consultarHistoricoItem(itemId),
+        (leitura, from) => leitura.consultarHistoricoItem.staticCall(itemId, { from }),
+      );
     },
 
     /**

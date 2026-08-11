@@ -350,6 +350,11 @@ describe("TransferenciaCustodia", () => {
       );
     });
 
+    it("permite o owner (relayer) consultar sem ser signatario", async () => {
+      const t = await contrato.connect(owner).consultar(1n);
+      expect(t.itemId).to.equal(itemId);
+    });
+
     it("acumula historico de transferencias por item", async () => {
       const assinaturas1 = await assinarOrdenado([policiaA, policiaB], "IniciarTransferencia", {
         itemId,

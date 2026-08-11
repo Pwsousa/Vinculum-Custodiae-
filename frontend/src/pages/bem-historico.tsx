@@ -108,6 +108,24 @@ export function BemHistorico() {
                         </Button>
                       </div>
                     </div>
+                    {(estadoNome === "Confirmada" || estadoNome === "ConfirmadaComRessalva") && (
+                      <div className="mt-3 grid gap-2 rounded-sm border border-success/30 bg-success/10 p-3 text-xs sm:grid-cols-2">
+                        <div>
+                          <p className="rule-label">Custódia anterior</p>
+                          <p className="mt-0.5 font-medium text-foreground">
+                            {nome(t.institutionOrigemId)}{" "}
+                            <span className="hash font-normal">#{t.institutionOrigemId}</span>
+                          </p>
+                        </div>
+                        <div>
+                          <p className="rule-label">Custódia atual (após 2ª assinatura)</p>
+                          <p className="mt-0.5 font-medium text-foreground">
+                            {nome(t.institutionDestinoId)}{" "}
+                            <span className="hash font-normal">#{t.institutionDestinoId}</span>
+                          </p>
+                        </div>
+                      </div>
+                    )}
                     <div className="mt-2 grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
                       <span>
                         Lacre: <Hash value={t.hashLacre} chars={10} />

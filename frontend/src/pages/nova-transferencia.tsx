@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { keccak256, toUtf8Bytes } from "ethers";
 import { AppShell } from "@/components/app-shell";
 import { LacreQr } from "@/components/lacre-qr";
@@ -12,9 +12,10 @@ import { Label } from "@/components/ui/label";
 
 export function NovaTransferencia() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { obterSigner } = useWallet();
 
-  const [itemId, setItemId] = useState("");
+  const [itemId, setItemId] = useState(() => searchParams.get("itemId") ?? "");
   const [institutionDestinoId, setInstitutionDestinoId] = useState("");
   const [numeroLacre, setNumeroLacre] = useState("");
   const [erro, setErro] = useState("");

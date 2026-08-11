@@ -93,8 +93,13 @@ contract TransferenciaCustodia is EIP712 {
         _;
     }
 
+    /// @dev Signatários de qualquer instituição leem a cadeia; o owner (ex.: relayer do backend)
+    /// também, pois as consultas HTTP usam a wallet do relayer e não a do usuário final.
     modifier apenasComAcessoDeLeitura() {
-        require(acessosDeLeituraAtivos[msg.sender] > 0, "sem acesso de leitura");
+        require(
+            msg.sender == owner || acessosDeLeituraAtivos[msg.sender] > 0,
+            "sem acesso de leitura"
+        );
         _;
     }
 
@@ -303,7 +308,7 @@ contract TransferenciaCustodia is EIP712 {
 
     // ---------- Consulta ----------
 
-    /// @notice Lê os dados de uma transferência. Restrito a quem for signatário de alguma instituição.
+    /// @notice Lê os dados de uma transferência. Restrito a signatários ou ao owner (relayer).
     function consultar(uint256 id) external view apenasComAcessoDeLeitura returns (Transferencia memory) {
         return transferencias[id];
     }
