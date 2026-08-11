@@ -9,5 +9,13 @@
     "frontend",
     "mocks/sisbemjud",
     "mocks/policia-civil"
-  ]
+  ],
+  "scripts": {
+    "mock:sisbemjud": "npm run iniciar -w @vinculum-custodiae/mock-sisbemjud",
+    "mock:policia": "npm run iniciar -w @vinculum-custodiae/mock-policia-civil",
+    "backend": "npm run iniciar -w @vinculum-custodiae/backend",
+    "frontend": "npm run iniciar -w @vinculum-custodiae/frontend",
+    "testar:backend": "npm run testar -w @vinculum-custodiae/backend",
+    "testar:contratos": "npm run testar -w @vinculum-custodiae/contratos"
+  }
 }

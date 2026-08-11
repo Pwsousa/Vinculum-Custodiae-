@@ -7,12 +7,19 @@
     "testar": "hardhat test",
     "no": "hardhat node",
     "implantar:local": "hardhat run scripts/implantar.ts --network localhost",
-    "implantar:sepolia": "hardhat run scripts/implantar.ts --network sepolia"
+    "implantar:sepolia": "hardhat run scripts/implantar.ts --network sepolia",
+    "demo": "hardhat run scripts/demo.ts",
+    "demo:federal": "hardhat run scripts/demo-declinio-federal.ts"
   },
   "devDependencies": {
-    "hardhat": "^2.22.0",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "typescript": "^5.8.3",
-    "ts-node": "^10.9.2"
+    "@types/node": "^20.14.0",
+    "dotenv": "^16.4.5",
+    "hardhat": "^2.22.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "4.9.6"
   }
 }
