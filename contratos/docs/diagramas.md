@@ -3,7 +3,8 @@
 ## Estados da transferência
 
 Enum `Estado`. Recebimento com ressalva é estado de 1ª classe, não exceção. Recusa é estado
-próprio — custódia permanece com a origem.
+próprio — custódia permanece com a origem. A custódia do item (`custodianteInstituicaoAtual`)
+só muda em `Confirmada` / `ConfirmadaComRessalva`.
 
 ```mermaid
 stateDiagram-v2
@@ -16,38 +17,64 @@ stateDiagram-v2
     Recusada --> [*]
 ```
 
+## Mudança de custódia (dupla assinatura)
+
+O `itemId` (hash do bem) **não muda**. O que muda após a 2ª assinatura é a instituição
+custodiante. Enquanto o estado for `Iniciada`, a responsabilidade permanece com a origem.
+
+```mermaid
+flowchart LR
+    subgraph antes ["Após iniciar()"]
+        A["custodiante = origem"]
+        B["estado = Iniciada"]
+        C["transferenciaPendentePorItem = id"]
+    end
+    subgraph depois ["Após confirmar()"]
+        D["custodiante = destino"]
+        E["estado = Confirmada | ConfirmadaComRessalva"]
+        F["transferenciaPendentePorItem = 0"]
+    end
+    antes -->|"2ª assinatura EIP-712 do destino"| depois
+```
+
 ## Multisig por instituição (assinatura EIP-712 agregada)
 
 Cada instituição tem N-de-M signatários. `iniciar`/`confirmar`/`recusar` recebem um array de
 assinaturas EIP-712 (assinadas off-chain, em ordem crescente de endereço) em vez de depender de
 `msg.sender` como único signatário.
 
+No stack desta PoC, o **frontend** coleta a assinatura na MetaMask e o **backend** (relayer)
+envia a transação on-chain — a chave privada institucional nunca passa pelo servidor.
+
 ```mermaid
 sequenceDiagram
-    participant S1 as Signatário A (origem)
-    participant S2 as Signatário B (origem)
+    participant UI as Frontend (MetaMask)
+    participant API as Backend (relayer)
     participant C as TransferenciaCustodia
-    participant D as Instituição destino (threshold=1)
 
-    S1->>S1: assina IniciarTransferencia off-chain (EIP-712)
-    S2->>S2: assina o mesmo hash off-chain
-    S1->>C: iniciar(itemId, destinoId, hashLacre, [assinaturaA, assinaturaB])
-    activate C
-    C->>C: ECDSA.recover em cada assinatura, ordem crescente, sem duplicata
-    C->>C: threshold da origem atingido? nonce da instituição incrementa
-    C-->>S1: emit TransferenciaIniciada(id, itemId, origemId, destinoId, hashLacre)
-    deactivate C
+    Note over UI,C: 1ª assinatura — origem inicia remessa
+    UI->>API: GET /transferencias/preparar-iniciar
+    API-->>UI: domínio + tipos EIP-712 + valor
+    UI->>UI: signTypedData (wallet da origem)
+    UI->>API: POST /transferencias/iniciar + assinaturas
+    API->>C: iniciar(itemId, destinoId, hashLacre, assinaturas)
+    C-->>API: TransferenciaIniciada
+    API-->>UI: { txHash, id }
 
-    D->>D: assina ConfirmarTransferencia off-chain
-    D->>C: confirmar(id, ressalva, [assinaturaD])
-    C->>C: estado = Confirmada | ConfirmadaComRessalva
+    Note over UI,C: 2ª assinatura — destino confirma (custódia muda)
+    UI->>API: GET /transferencias/:id/preparar-confirmar
+    UI->>UI: signTypedData (wallet do destino)
+    UI->>API: POST /transferencias/:id/confirmar
+    API->>C: confirmar(id, ressalva, assinaturas)
     C->>C: custodianteInstituicaoAtual[itemId] = destinoId
-    C-->>D: emit TransferenciaConfirmada + CustodiaAlterada
+    C-->>API: TransferenciaConfirmada + CustodiaAlterada
 ```
 
 O `owner` do contrato (quem cadastra instituições e signatários) deve ser, em produção, uma
 carteira multisig própria (ex: Gnosis Safe) — `transferirOwnership` + `aceitarOwnership` (duas
 etapas) permitem migrar o owner do deployer inicial para a Safe sem risco de travar o contrato.
+
+Em localhost (Hardhat), a Account #0 é owner e também `PRIVATE_KEY_RELAYER` do backend.
 
 ## itemId vs hashLacre
 
@@ -89,10 +116,14 @@ existe uma transferência pendente por item por vez (`transferenciaPendentePorIt
 
 ## Controle de acesso
 
-`owner` cadastra instituições e signatários. Leitura (`consultar`/`consultarHistoricoItem`) é
-liberada a qualquer endereço que seja signatário de alguma instituição — não só das partes
-envolvidas naquela transferência (permite, por exemplo, que um juízo federal leia o histórico sem
-pedir ao juízo estadual).
+`owner` cadastra instituições e signatários (no front: `/admin/instituicoes`). Leitura
+(`consultar` / `consultarHistoricoItem`) é liberada a:
+
+- qualquer endereço que seja **signatário** de alguma instituição, e
+- o **owner** (para o backend/relayer poder montar painel e histórico sem ser signatário).
+
+Isso permite, por exemplo, que um juízo federal (signatário de instituição autorizada) leia o
+histórico sem pedir ao juízo estadual.
 
 ```mermaid
 flowchart LR
@@ -105,4 +136,17 @@ flowchart LR
     Sig -.gate multisig.-> Confirmar["confirmar()"]
     Sig -.gate multisig.-> Recusar["recusar()"]
     Sig -.gate leitura.-> Consultar["consultar() / consultarHistoricoItem()"]
+    Owner -.gate leitura.-> Consultar
+```
+
+## Fluxo operacional na UI
+
+```mermaid
+flowchart TD
+    A["Owner: /admin/instituicoes\ncadastra instituições + signatários"] --> B["Signatário origem: /bens/novo\nregistrarItem"]
+    B --> C["Origem: /transferencias/nova\niniciar remessa + lacre"]
+    C --> D["Estado Iniciada\ncustódia ainda na origem"]
+    D --> E["Destino: /remessas\nconfirma ou recusa"]
+    E -->|confirmar| F["Custódia atual = destino\n/bens/:itemId + /historico"]
+    E -->|recusar| G["Custódia permanece na origem\nlacre consumido"]
 ```
